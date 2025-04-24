@@ -30,12 +30,12 @@
       </el-alert>
     </div>
 
-    <el-row :gutter="24">
-      <el-col :span="12">
+    <el-row :gutter="24" class="responsive-row">
+      <el-col :xs="24" :sm="24" :md="12">
         <el-card class="measurement-card">
           <template #header>
-            <div class="flex items-center justify-between">
-              <span class="text-lg font-semibold">{{ currentStep.label }}</span>
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-base sm:text-lg font-semibold">{{ currentStep.label }}</span>
               <el-tooltip
                 :content="showTips ? 'Hide Tips' : 'Show Tips'"
                 placement="top"
@@ -43,19 +43,20 @@
                 <el-button 
                   :icon="HelpCircle"
                   circle
+                  size="small"
                   @click="showTips = !showTips"
                 />
               </el-tooltip>
             </div>
           </template>
 
-          <p class="text-gray-600 mb-4">{{ currentStep.instructions }}</p>
+          <p class="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">{{ currentStep.instructions }}</p>
 
           <el-collapse-transition>
             <div v-show="showTips" class="tips-section">
-              <div class="border-l-4 border-primary p-4 bg-primary/5 mb-4">
-                <h4 class="font-semibold mb-2">Measurement Tips:</h4>
-                <ul class="list-disc list-inside space-y-1">
+              <div class="border-l-4 border-primary p-3 sm:p-4 bg-primary/5 mb-3 sm:mb-4">
+                <h4 class="font-semibold mb-2 text-sm sm:text-base">Measurement Tips:</h4>
+                <ul class="list-disc list-inside space-y-1 text-xs sm:text-sm">
                   <li v-for="tip in currentStep.tips" :key="tip">{{ tip }}</li>
                 </ul>
               </div>
@@ -64,7 +65,7 @@
 
           <el-form-item 
             :error="measurementError"
-            class="mb-0"
+            class="mb-0 mt-auto"
           >
             <el-input-number
               v-model="measurements[currentStep.label]"
@@ -81,24 +82,25 @@
         </el-card>
       </el-col>
 
-      <el-col :span="12">
-        <el-card>
+      <el-col :xs="24" :sm="24" :md="12">
+        <el-card class="h-full">
           <template #header>
-            <div class="text-lg font-semibold">Video Tutorial</div>
+            <div class="text-base sm:text-lg font-semibold">Video Tutorial</div>
           </template>
 
-          <div class="aspect-video bg-gray-100 rounded-lg mb-4">
+          <div class="aspect-video bg-gray-100 rounded-lg mb-3 sm:mb-4 relative w-full" style="padding-top: 75%">
             <!-- Video player placeholder -->
-            <div class="h-full flex items-center justify-center text-gray-500">
+            <div class="absolute inset-0 flex items-center justify-center text-gray-500 text-sm sm:text-base">
               Video tutorial for {{ currentStep.label.toLowerCase() }} measurement
             </div>
           </div>
 
-          <div class="flex justify-between mt-4">
+          <div class="flex flex-col sm:flex-row justify-between gap-3 sm:gap-0 mt-auto">
             <el-button 
               :icon="ArrowLeft"
               @click="previousStep"
               :disabled="activeStep === 0"
+              class="w-full sm:w-auto"
             >
               Back
             </el-button>
@@ -110,6 +112,7 @@
               :loading="saving"
               @click="saveMeasurements"
               :disabled="!isCurrentStepValid"
+              class="w-full sm:w-auto"
             >
               Save Measurements
             </el-button>
@@ -118,6 +121,7 @@
               type="primary"
               @click="nextStep"
               :disabled="!isCurrentStepValid"
+              class="w-full sm:w-auto"
             >
               Next
               <el-icon class="el-icon--right"><arrow-right /></el-icon>
@@ -242,10 +246,34 @@ const resetMeasurements = () => {
 <style scoped>
 .measurement-card {
   height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .tips-section {
   margin: -8px -20px 16px;
   padding: 0 20px;
+}
+
+.responsive-row {
+  margin-left: -12px !important;
+  margin-right: -12px !important;
+}
+
+.responsive-row :deep(.el-col) {
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+}
+
+@media (max-width: 768px) {
+  .responsive-row {
+    margin-left: -8px !important;
+    margin-right: -8px !important;
+  }
+
+  .responsive-row :deep(.el-col) {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
 }
 </style>

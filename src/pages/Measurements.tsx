@@ -13,16 +13,84 @@ import {
   IconButton,
   Tooltip,
   Alert,
-  LinearProgress
+  LinearProgress,
+  Paper
 } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HelpCircle, ArrowLeft, ArrowRight, Save, RefreshCw } from 'lucide-react';
+
+const VideoPlayer = ({ videoUrl, title }: { videoUrl: string; title: string }) => {
+  const getYouTubeVideoId = (url: string) => {
+    if (!url) return '';
+    if (url.includes('youtu.be/')) {
+      return url.split('youtu.be/')[1].split('?')[0];
+    }
+    const match = url.match(/[?&]v=([^?&]+)/);
+    return match ? match[1] : '';
+  };
+
+  const videoId = getYouTubeVideoId(videoUrl);
+  console.log('Video URL:', videoUrl);
+  console.log('Video ID:', videoId);
+
+  if (!videoId) {
+    return (
+      <Paper 
+        elevation={2} 
+        sx={{ 
+          width: '100%',
+          height: { xs: '150px', sm: '200px' },
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'grey.200',
+          borderRadius: { xs: 1, sm: 2 },
+          mb: { xs: 2, sm: 3 }
+        }}
+      >
+        <Typography color="text.secondary">Video not available</Typography>
+      </Paper>
+    );
+  }
+
+  return (
+    <Paper 
+      elevation={2} 
+      sx={{ 
+        position: 'relative',
+        width: '100%',
+        paddingTop: { xs: '56.25%', sm: '56.25%' },
+        borderRadius: { xs: 1, sm: 2 },
+        overflow: 'hidden',
+        backgroundColor: 'black',
+        maxWidth: '100%',
+        margin: '0 auto',
+        mb: { xs: 2, sm: 3 }
+      }}
+    >
+      <iframe
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          border: 'none'
+        }}
+        src={`https://www.youtube.com/embed/${videoId}`}
+        title={title}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+      />
+    </Paper>
+  );
+};
 
 const measurementSteps = [
   {
     label: 'Chest',
     instructions: 'Measure around the fullest part of your chest, keeping the tape parallel to the ground.',
-    videoUrl: 'https://www.youtube.com/watch?v=zANQQLTvAHk&pp=ygUSbWVhc3VyZSB5b3VyIGNoZXN0',
+    videoUrl: 'https://www.youtube.com/watch?v=8zPQI-SWdI8&pp=ygUSbWVhc3VyZSB5b3VyIGNoZXN0',
     tips: [
       'Take a deep breath and measure',
       'Keep the tape snug but not tight',
@@ -35,7 +103,7 @@ const measurementSteps = [
   {
     label: 'Waist',
     instructions: 'Measure around your natural waistline, keeping the tape comfortably loose.',
-    videoUrl: 'https://example.com/waist-measurement',
+    videoUrl: 'https://www.youtube.com/watch?v=ZOuF0x4Mk3o&pp=ygUSbWVhc3VyZSB5b3VyIHdhaXN0',
     tips: [
       'Locate your natural waistline',
       'Keep one finger between the tape and your body',
@@ -48,7 +116,7 @@ const measurementSteps = [
   {
     label: 'Shoulders',
     instructions: 'Measure across the back from shoulder point to shoulder point.',
-    videoUrl: 'https://example.com/shoulder-measurement',
+    videoUrl: 'https://www.youtube.com/watch?v=jfIg_sYChSE&pp=ygUWbWVhc3VyZSB5b3VyIHNob3VsZGVycw%3D%3D',
     tips: [
       'Stand naturally with arms at sides',
       'Measure from the outer edges of each shoulder',
@@ -106,160 +174,295 @@ const Measurements = () => {
   const currentMeasurement = measurements[measurementSteps[activeStep].label] || '';
 
   return (
-    <Box>
+    <Box sx={{ px: { xs: 1, sm: 2, md: 3 } }}>
       <Box
         component={motion.div}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
       >
-        <Typography variant="h2" gutterBottom align="center">
+        <Typography 
+          variant="h2" 
+          gutterBottom 
+          align="center"
+          sx={{ 
+            fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3.75rem' },
+            mt: { xs: 2, sm: 3 }
+          }}
+        >
           Take Your Measurements
         </Typography>
-        <Typography variant="h5" color="text.secondary" align="center" sx={{ mb: 6 }}>
+        <Typography 
+          variant="h5" 
+          color="text.secondary" 
+          align="center" 
+          sx={{ 
+            mb: { xs: 3, sm: 4, md: 6 },
+            fontSize: { xs: '1rem', sm: '1.25rem', md: '1.5rem' },
+            px: { xs: 1, sm: 0 }
+          }}
+        >
           Follow our step-by-step guide for accurate measurements
         </Typography>
+      </Box>
 
-        {saved && (
-          <Alert 
-            severity="success" 
-            sx={{ mb: 4 }}
-            action={
-              <Button 
-                color="inherit" 
-                size="small" 
-                startIcon={<RefreshCw size={16} />}
-                onClick={() => {
-                  setMeasurements({});
-                  setActiveStep(0);
-                  setSaved(false);
+      <Stepper 
+        activeStep={activeStep} 
+        alternativeLabel
+        sx={{ 
+          mb: { xs: 3, sm: 4 },
+          overflowX: 'auto',
+          '& .MuiStepLabel-label': {
+            fontSize: { xs: '0.75rem', sm: '0.875rem' }
+          }
+        }}
+      >
+        {measurementSteps.map((step) => (
+          <Step key={step.label}>
+            <StepLabel>{step.label}</StepLabel>
+          </Step>
+        ))}
+      </Stepper>
+
+      <Grid container spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ mb: { xs: 3, sm: 4 } }}>
+        <Grid item xs={12} md={6}>
+          <AnimatePresence mode="wait">
+            <Box
+              component={motion.div}
+              key={activeStep}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Card 
+                elevation={3}
+                sx={{ 
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  borderRadius: { xs: 2, sm: 3 }
                 }}
               >
-                Start New
-              </Button>
-            }
-          >
-            Your measurements have been saved successfully!
-          </Alert>
-        )}
-
-        <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
-          {measurementSteps.map((step, index) => (
-            <Step key={step.label} completed={measurements[step.label] !== undefined}>
-              <StepLabel>{step.label}</StepLabel>
-            </Step>
-          ))}
-        </Stepper>
-
-        <Grid container spacing={4}>
-          <Grid item xs={12} md={6}>
-            <Card component={motion.div} layout>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="h6">
+                <CardContent sx={{ flexGrow: 1, p: { xs: 2, sm: 3 } }}>
+                  <Typography 
+                    variant="h4" 
+                    gutterBottom
+                    sx={{ 
+                      fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' },
+                      mb: { xs: 1, sm: 2 }
+                    }}
+                  >
                     {measurementSteps[activeStep].label}
                   </Typography>
-                  <Tooltip title="Show Tips">
-                    <IconButton 
-                      size="small" 
-                      sx={{ ml: 1 }}
-                      onClick={() => setShowTips(!showTips)}
-                    >
-                      <HelpCircle size={20} />
-                    </IconButton>
-                  </Tooltip>
-                </Box>
-                
-                <Typography color="text.secondary" gutterBottom>
-                  {measurementSteps[activeStep].instructions}
-                </Typography>
+                  <Typography 
+                    variant="body1" 
+                    paragraph
+                    sx={{ 
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                      mb: { xs: 2, sm: 3 }
+                    }}
+                  >
+                    {measurementSteps[activeStep].instructions}
+                  </Typography>
 
-                <AnimatePresence>
-                  {showTips && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                    >
-                      <Box sx={{ mt: 2, mb: 2, pl: 2, borderLeft: 2, borderColor: 'primary.main' }}>
-                        {measurementSteps[activeStep].tips.map((tip, index) => (
-                          <Typography key={index} variant="body2" sx={{ mb: 1 }}>
-                            • {tip}
-                          </Typography>
-                        ))}
-                      </Box>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                  <Box sx={{ mb: { xs: 2, sm: 3 } }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <Typography 
+                        variant="h6"
+                        sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}
+                      >
+                        Tips
+                      </Typography>
+                      <Tooltip title="Show/Hide Tips">
+                        <IconButton size="small" onClick={() => setShowTips(!showTips)} sx={{ ml: 1 }}>
+                          <HelpCircle size={16} />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                    
+                    <AnimatePresence>
+                      {showTips && (
+                        <Box
+                          component={motion.div}
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.3 }}
+                          sx={{ overflow: 'hidden' }}
+                        >
+                          <Alert 
+                            severity="info" 
+                            sx={{ 
+                              mt: 1,
+                              '& .MuiAlert-message': {
+                                fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                              }
+                            }}
+                          >
+                            <ul style={{ margin: 0, paddingLeft: '1.5rem' }}>
+                              {measurementSteps[activeStep].tips.map((tip, index) => (
+                                <li key={index}>{tip}</li>
+                              ))}
+                            </ul>
+                          </Alert>
+                        </Box>
+                      )}
+                    </AnimatePresence>
+                  </Box>
 
-                <TextField
-                  fullWidth
-                  label={`${measurementSteps[activeStep].label} Measurement`}
-                  type="number"
-                  value={currentMeasurement}
-                  onChange={(e) => handleMeasurementChange(e.target.value)}
-                  error={currentMeasurement !== '' && !isValidMeasurement()}
-                  helperText={currentMeasurement !== '' && !isValidMeasurement() 
-                    ? `Please enter a value between ${measurementSteps[activeStep].minValue} and ${measurementSteps[activeStep].maxValue} ${measurementSteps[activeStep].unit}`
-                    : ''}
-                  InputProps={{
-                    endAdornment: measurementSteps[activeStep].unit
-                  }}
-                  sx={{ mt: 2 }}
-                />
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Video Tutorial
-                </Typography>
+                  <Box sx={{ mt: 'auto' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <Typography 
+                        variant="subtitle1"
+                        sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                      >
+                        Enter your {measurementSteps[activeStep].label.toLowerCase()} measurement:
+                      </Typography>
+                    </Box>
+                    
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <TextField
+                        type="number"
+                        value={currentMeasurement}
+                        onChange={(e) => handleMeasurementChange(e.target.value)}
+                        InputProps={{
+                          endAdornment: <Typography variant="body2" color="text.secondary">{measurementSteps[activeStep].unit}</Typography>,
+                        }}
+                        fullWidth
+                        size="small"
+                        sx={{ 
+                          '& .MuiInputBase-input': {
+                            fontSize: { xs: '0.875rem', sm: '1rem' }
+                          }
+                        }}
+                      />
+                      <Tooltip title="Reset">
+                        <IconButton 
+                          onClick={() => handleMeasurementChange('')}
+                          size="small"
+                          sx={{ ml: 1 }}
+                        >
+                          <RefreshCw size={18} />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                    
+                    {currentMeasurement && !isValidMeasurement() && (
+                      <Typography 
+                        color="error" 
+                        variant="caption" 
+                        sx={{ 
+                          display: 'block', 
+                          mt: 1,
+                          fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                        }}
+                      >
+                        Please enter a value between {measurementSteps[activeStep].minValue} and {measurementSteps[activeStep].maxValue} {measurementSteps[activeStep].unit}
+                      </Typography>
+                    )}
+                  </Box>
+                </CardContent>
+              </Card>
+            </Box>
+          </AnimatePresence>
+        </Grid>
+        
+        <Grid item xs={12} md={6}>
+          <Card 
+            elevation={3}
+            sx={{ 
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              borderRadius: { xs: 2, sm: 3 }
+            }}
+          >
+            <CardContent sx={{ flexGrow: 1, p: { xs: 2, sm: 3 } }}>
+              <Typography 
+                variant="h5" 
+                gutterBottom
+                sx={{ 
+                  fontSize: { xs: '1.25rem', sm: '1.5rem' },
+                  mb: { xs: 2, sm: 3 }
+                }}
+              >
+                How to Measure
+              </Typography>
+              
+              <VideoPlayer 
+                videoUrl={measurementSteps[activeStep].videoUrl} 
+                title={`How to measure your ${measurementSteps[activeStep].label.toLowerCase()}`} 
+              />
+              
+              <Box sx={{ mt: 'auto' }}>
                 <Box 
                   sx={{ 
-                    aspectRatio: '16/9', 
-                    bgcolor: 'grey.200', 
-                    borderRadius: 1,
-                    mb: 2 
+                    display: 'flex', 
+                    justifyContent: 'space-between',
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    gap: { xs: 1, sm: 0 }
                   }}
                 >
-                  {/* Video player would go here */}
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
                   <Button
-                    startIcon={<ArrowLeft />}
+                    variant="outlined"
+                    startIcon={<ArrowLeft size={16} />}
                     onClick={handleBack}
                     disabled={activeStep === 0}
+                    sx={{ 
+                      width: { xs: '100%', sm: 'auto' },
+                      fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                    }}
                   >
-                    Back
+                    Previous
                   </Button>
-                  {activeStep === measurementSteps.length - 1 ? (
-                    <Button
-                      variant="contained"
-                      startIcon={<Save />}
-                      onClick={handleSave}
-                      disabled={loading || !Object.keys(measurements).length === measurementSteps.length}
-                    >
-                      Save Measurements
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="contained"
-                      endIcon={<ArrowRight />}
-                      onClick={handleNext}
-                      disabled={!isValidMeasurement()}
-                    >
-                      Next
-                    </Button>
-                  )}
+                  
+                  <Box sx={{ display: 'flex', gap: 1, width: { xs: '100%', sm: 'auto' } }}>
+                    {activeStep === measurementSteps.length - 1 ? (
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        startIcon={<Save size={16} />}
+                        onClick={handleSave}
+                        disabled={loading || saved || Object.keys(measurements).length < measurementSteps.length}
+                        sx={{ 
+                          width: { xs: '100%', sm: 'auto' },
+                          fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                        }}
+                      >
+                        {loading ? 'Saving...' : saved ? 'Saved' : 'Save All Measurements'}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        endIcon={<ArrowRight size={16} />}
+                        onClick={handleNext}
+                        sx={{ 
+                          width: { xs: '100%', sm: 'auto' },
+                          fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                        }}
+                      >
+                        Next
+                      </Button>
+                    )}
+                  </Box>
                 </Box>
-                {loading && <LinearProgress sx={{ mt: 2 }} />}
-              </CardContent>
-            </Card>
-          </Grid>
+                
+                {loading && (
+                  <LinearProgress sx={{ mt: 2 }} />
+                )}
+                
+                {saved && (
+                  <Alert severity="success" sx={{ mt: 2 }}>
+                    Your measurements have been saved successfully!
+                  </Alert>
+                )}
+              </Box>
+            </CardContent>
+          </Card>
         </Grid>
-      </Box>
+      </Grid>
     </Box>
   );
 };
