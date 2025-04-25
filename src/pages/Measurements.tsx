@@ -14,83 +14,21 @@ import {
   Tooltip,
   Alert,
   LinearProgress,
-  Paper
+  Paper,
+  Collapse,
+  useMediaQuery,
+  useTheme,
+  Snackbar
 } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HelpCircle, ArrowLeft, ArrowRight, Save, RefreshCw } from 'lucide-react';
-
-const VideoPlayer = ({ videoUrl, title }: { videoUrl: string; title: string }) => {
-  const getYouTubeVideoId = (url: string) => {
-    if (!url) return '';
-    if (url.includes('youtu.be/')) {
-      return url.split('youtu.be/')[1].split('?')[0];
-    }
-    const match = url.match(/[?&]v=([^?&]+)/);
-    return match ? match[1] : '';
-  };
-
-  const videoId = getYouTubeVideoId(videoUrl);
-  console.log('Video URL:', videoUrl);
-  console.log('Video ID:', videoId);
-
-  if (!videoId) {
-    return (
-      <Paper 
-        elevation={2} 
-        sx={{ 
-          width: '100%',
-          height: { xs: '150px', sm: '200px' },
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: 'grey.200',
-          borderRadius: { xs: 1, sm: 2 },
-          mb: { xs: 2, sm: 3 }
-        }}
-      >
-        <Typography color="text.secondary">Video not available</Typography>
-      </Paper>
-    );
-  }
-
-  return (
-    <Paper 
-      elevation={2} 
-      sx={{ 
-        position: 'relative',
-        width: '100%',
-        paddingTop: { xs: '56.25%', sm: '56.25%' },
-        borderRadius: { xs: 1, sm: 2 },
-        overflow: 'hidden',
-        backgroundColor: 'black',
-        maxWidth: '100%',
-        margin: '0 auto',
-        mb: { xs: 2, sm: 3 }
-      }}
-    >
-      <iframe
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          border: 'none'
-        }}
-        src={`https://www.youtube.com/embed/${videoId}`}
-        title={title}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowFullScreen
-      />
-    </Paper>
-  );
-};
+import SimpleYouTubePlayer from '../components/SimpleYouTubePlayer';
 
 const measurementSteps = [
   {
     label: 'Chest',
     instructions: 'Measure around the fullest part of your chest, keeping the tape parallel to the ground.',
-    videoUrl: 'https://www.youtube.com/watch?v=8zPQI-SWdI8&pp=ygUSbWVhc3VyZSB5b3VyIGNoZXN0',
+    videoId: 'zANQQLTvAHk', // Direct video ID
     tips: [
       'Take a deep breath and measure',
       'Keep the tape snug but not tight',
@@ -103,7 +41,7 @@ const measurementSteps = [
   {
     label: 'Waist',
     instructions: 'Measure around your natural waistline, keeping the tape comfortably loose.',
-    videoUrl: 'https://www.youtube.com/watch?v=ZOuF0x4Mk3o&pp=ygUSbWVhc3VyZSB5b3VyIHdhaXN0',
+    videoId: 'ZOuF0x4Mk3o', // Direct video ID
     tips: [
       'Locate your natural waistline',
       'Keep one finger between the tape and your body',
@@ -116,7 +54,7 @@ const measurementSteps = [
   {
     label: 'Shoulders',
     instructions: 'Measure across the back from shoulder point to shoulder point.',
-    videoUrl: 'https://www.youtube.com/watch?v=jfIg_sYChSE&pp=ygUWbWVhc3VyZSB5b3VyIHNob3VsZGVycw%3D%3D',
+    videoId: 'jfIg_sYChSE', // Direct video ID
     tips: [
       'Stand naturally with arms at sides',
       'Measure from the outer edges of each shoulder',
@@ -129,11 +67,19 @@ const measurementSteps = [
 ];
 
 const Measurements = () => {
-  const [activeStep, setActiveStep] = React.useState(0);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+  
+  const [activeStep, setActiveStep] = useState(0);
   const [measurements, setMeasurements] = useState<Record<string, number>>({});
   const [showTips, setShowTips] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveProgress, setSaveProgress] = useState(0);
+
+  const currentStep = measurementSteps[activeStep];
+  const isLastStep = activeStep === measurementSteps.length - 1;
 
   const handleNext = () => {
     setActiveStep((prev) => Math.min(prev + 1, measurementSteps.length - 1));
@@ -147,71 +93,94 @@ const Measurements = () => {
 
   const handleMeasurementChange = (value: string) => {
     const numValue = parseFloat(value);
-    const currentStep = measurementSteps[activeStep];
-    
     if (!isNaN(numValue)) {
       setMeasurements(prev => ({
         ...prev,
         [currentStep.label]: numValue
       }));
+    } else {
+      // If the value is not a valid number, remove the measurement
+      const newMeasurements = { ...measurements };
+      delete newMeasurements[currentStep.label];
+      setMeasurements(newMeasurements);
     }
+    setSaved(false);
   };
 
   const isValidMeasurement = () => {
-    const currentStep = measurementSteps[activeStep];
     const value = measurements[currentStep.label];
-    return value >= currentStep.minValue && value <= currentStep.maxValue;
+    return value !== undefined && 
+           value >= currentStep.minValue && 
+           value <= currentStep.maxValue;
   };
 
-  const handleSave = async () => {
+  const canSave = () => {
+    return Object.keys(measurements).length === measurementSteps.length && 
+           !Object.entries(measurements).some(([key, value]) => {
+             const step = measurementSteps.find(s => s.label === key);
+             return step && (value < step.minValue || value > step.maxValue);
+           });
+  };
+
+  const handleSave = () => {
+    if (!canSave()) return;
+    
     setLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setSaved(true);
-    setLoading(false);
+    setSaveProgress(0);
+    
+    // Simulate API call with progress
+    const interval = setInterval(() => {
+      setSaveProgress(prev => {
+        const newProgress = prev + 10;
+        if (newProgress >= 100) {
+          clearInterval(interval);
+          setLoading(false);
+          setSaved(true);
+          return 100;
+        }
+        return newProgress;
+      });
+    }, 150);
   };
 
-  const currentMeasurement = measurements[measurementSteps[activeStep].label] || '';
+  const resetMeasurements = () => {
+    setMeasurements({});
+    setActiveStep(0);
+    setSaved(false);
+    setShowTips(false);
+  };
 
   return (
-    <Box sx={{ px: { xs: 1, sm: 2, md: 3 } }}>
-      <Box
-        component={motion.div}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-      >
+    <Box sx={{ padding: { xs: 2, sm: 3, md: 4 } }}>
+      <Box sx={{ textAlign: 'center', mb: { xs: 4, md: 6 } }}>
         <Typography 
-          variant="h2" 
-          gutterBottom 
-          align="center"
+          variant="h4" 
+          component="h1"
           sx={{ 
-            fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3.75rem' },
-            mt: { xs: 2, sm: 3 }
+            fontWeight: 700,
+            mb: 2,
+            fontSize: { xs: '1.75rem', sm: '2.5rem' }
           }}
         >
           Take Your Measurements
         </Typography>
         <Typography 
-          variant="h5" 
-          color="text.secondary" 
-          align="center" 
+          variant="h6" 
+          color="text.secondary"
           sx={{ 
-            mb: { xs: 3, sm: 4, md: 6 },
-            fontSize: { xs: '1rem', sm: '1.25rem', md: '1.5rem' },
-            px: { xs: 1, sm: 0 }
+            fontWeight: 400,
+            fontSize: { xs: '1rem', sm: '1.25rem' }
           }}
         >
           Follow our step-by-step guide for accurate measurements
         </Typography>
       </Box>
-
+      
       <Stepper 
         activeStep={activeStep} 
         alternativeLabel
         sx={{ 
-          mb: { xs: 3, sm: 4 },
-          overflowX: 'auto',
+          mb: { xs: 4, sm: 5 },
           '& .MuiStepLabel-label': {
             fontSize: { xs: '0.75rem', sm: '0.875rem' }
           }
@@ -223,16 +192,66 @@ const Measurements = () => {
           </Step>
         ))}
       </Stepper>
-
-      <Grid container spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ mb: { xs: 3, sm: 4 } }}>
+      
+      {/* Desktop alert - only show on larger screens */}
+      {saved && !isMobile && (
+        <Alert 
+          severity="success" 
+          sx={{ mb: 4 }}
+          action={
+            <Button 
+              color="inherit" 
+              size="small" 
+              startIcon={<RefreshCw size={16} />}
+              onClick={resetMeasurements}
+            >
+              Start New Measurements
+            </Button>
+          }
+        >
+          Your measurements have been saved successfully!
+        </Alert>
+      )}
+      
+      {/* Mobile alert - show as a snackbar on smaller screens */}
+      <Snackbar
+        open={saved && isMobile}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        sx={{ 
+          bottom: { xs: 16, sm: 24 },
+          '& .MuiPaper-root': {
+            width: '100%',
+            maxWidth: '90vw'
+          }
+        }}
+      >
+        <Alert 
+          severity="success"
+          sx={{ width: '100%' }}
+          action={
+            <Button 
+              color="inherit" 
+              size="small" 
+              startIcon={<RefreshCw size={16} />}
+              onClick={resetMeasurements}
+            >
+              New
+            </Button>
+          }
+        >
+          Measurements saved successfully!
+        </Alert>
+      </Snackbar>
+      
+      <Grid container spacing={isTablet ? 2 : 3}>
         <Grid item xs={12} md={6}>
           <AnimatePresence mode="wait">
             <Box
               component={motion.div}
               key={activeStep}
-              initial={{ opacity: 0, x: -20 }}
+              initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
+              exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.3 }}
             >
               <Card 
@@ -245,122 +264,137 @@ const Measurements = () => {
                 }}
               >
                 <CardContent sx={{ flexGrow: 1, p: { xs: 2, sm: 3 } }}>
-                  <Typography 
-                    variant="h4" 
-                    gutterBottom
-                    sx={{ 
-                      fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' },
-                      mb: { xs: 1, sm: 2 }
-                    }}
-                  >
-                    {measurementSteps[activeStep].label}
-                  </Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography 
+                      variant="h5" 
+                      component="h2"
+                      sx={{ 
+                        fontSize: { xs: '1.25rem', sm: '1.5rem' },
+                        fontWeight: 600
+                      }}
+                    >
+                      {currentStep.label}
+                    </Typography>
+                    
+                    <Tooltip title={showTips ? "Hide Tips" : "Show Tips"}>
+                      <IconButton 
+                        size="small" 
+                        onClick={() => setShowTips(!showTips)}
+                        sx={{ 
+                          backgroundColor: showTips ? 'primary.light' : 'transparent',
+                          color: showTips ? 'white' : 'inherit',
+                          '&:hover': {
+                            backgroundColor: showTips ? 'primary.main' : 'action.hover'
+                          }
+                        }}
+                      >
+                        <HelpCircle size={18} />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                  
                   <Typography 
                     variant="body1" 
                     paragraph
                     sx={{ 
+                      mb: { xs: 2, sm: 3 },
                       fontSize: { xs: '0.875rem', sm: '1rem' },
-                      mb: { xs: 2, sm: 3 }
+                      color: 'text.secondary'
                     }}
                   >
-                    {measurementSteps[activeStep].instructions}
+                    {currentStep.instructions}
                   </Typography>
-
-                  <Box sx={{ mb: { xs: 2, sm: 3 } }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  
+                  <Collapse in={showTips}>
+                    <Paper 
+                      elevation={1} 
+                      sx={{ 
+                        p: { xs: 1.5, sm: 2 },
+                        backgroundColor: 'primary.light',
+                        color: 'primary.contrastText',
+                        borderRadius: { xs: 1, sm: 2 },
+                        mb: { xs: 2, sm: 3 }
+                      }}
+                    >
                       <Typography 
-                        variant="h6"
-                        sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}
+                        variant="subtitle1" 
+                        gutterBottom
+                        sx={{ 
+                          fontWeight: 600,
+                          fontSize: { xs: '0.875rem', sm: '1rem' }
+                        }}
                       >
-                        Tips
+                        Measurement Tips:
                       </Typography>
-                      <Tooltip title="Show/Hide Tips">
-                        <IconButton size="small" onClick={() => setShowTips(!showTips)} sx={{ ml: 1 }}>
-                          <HelpCircle size={16} />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                    
-                    <AnimatePresence>
-                      {showTips && (
-                        <Box
-                          component={motion.div}
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.3 }}
-                          sx={{ overflow: 'hidden' }}
-                        >
-                          <Alert 
-                            severity="info" 
+                      <Box component="ul" sx={{ m: 0, pl: 2 }}>
+                        {currentStep.tips.map((tip, index) => (
+                          <Typography 
+                            component="li" 
+                            key={index}
                             sx={{ 
-                              mt: 1,
-                              '& .MuiAlert-message': {
-                                fontSize: { xs: '0.75rem', sm: '0.875rem' }
-                              }
+                              mb: 0.5,
+                              fontSize: { xs: '0.75rem', sm: '0.875rem' }
                             }}
                           >
-                            <ul style={{ margin: 0, paddingLeft: '1.5rem' }}>
-                              {measurementSteps[activeStep].tips.map((tip, index) => (
-                                <li key={index}>{tip}</li>
-                              ))}
-                            </ul>
-                          </Alert>
-                        </Box>
-                      )}
-                    </AnimatePresence>
-                  </Box>
-
+                            {tip}
+                          </Typography>
+                        ))}
+                      </Box>
+                    </Paper>
+                  </Collapse>
+                  
                   <Box sx={{ mt: 'auto' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <Typography 
-                        variant="subtitle1"
-                        sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
-                      >
-                        Enter your {measurementSteps[activeStep].label.toLowerCase()} measurement:
-                      </Typography>
-                    </Box>
+                    <Typography 
+                      variant="subtitle1" 
+                      gutterBottom
+                      sx={{ 
+                        fontWeight: 600,
+                        fontSize: { xs: '0.875rem', sm: '1rem' }
+                      }}
+                    >
+                      Enter your {currentStep.label.toLowerCase()} measurement:
+                    </Typography>
                     
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                       <TextField
                         type="number"
-                        value={currentMeasurement}
+                        value={measurements[currentStep.label] || ''}
                         onChange={(e) => handleMeasurementChange(e.target.value)}
-                        InputProps={{
-                          endAdornment: <Typography variant="body2" color="text.secondary">{measurementSteps[activeStep].unit}</Typography>,
-                        }}
-                        fullWidth
+                        placeholder={`${currentStep.minValue}-${currentStep.maxValue}`}
+                        variant="outlined"
                         size="small"
+                        inputProps={{ 
+                          min: currentStep.minValue,
+                          max: currentStep.maxValue,
+                          step: 0.5
+                        }}
                         sx={{ 
-                          '& .MuiInputBase-input': {
-                            fontSize: { xs: '0.875rem', sm: '1rem' }
-                          }
+                          width: '100%',
+                          mr: 1
+                        }}
+                        error={measurements[currentStep.label] !== undefined && !isValidMeasurement()}
+                        helperText={
+                          measurements[currentStep.label] !== undefined && !isValidMeasurement() 
+                            ? `Please enter a value between ${currentStep.minValue} and ${currentStep.maxValue} ${currentStep.unit}`
+                            : null
+                        }
+                        InputProps={{
+                          endAdornment: (
+                            <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>
+                              {currentStep.unit}
+                            </Box>
+                          ),
                         }}
                       />
-                      <Tooltip title="Reset">
-                        <IconButton 
-                          onClick={() => handleMeasurementChange('')}
-                          size="small"
-                          sx={{ ml: 1 }}
-                        >
-                          <RefreshCw size={18} />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                    
-                    {currentMeasurement && !isValidMeasurement() && (
-                      <Typography 
-                        color="error" 
-                        variant="caption" 
-                        sx={{ 
-                          display: 'block', 
-                          mt: 1,
-                          fontSize: { xs: '0.7rem', sm: '0.75rem' }
-                        }}
+                      
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleMeasurementChange('')}
+                        title="Reset"
                       >
-                        Please enter a value between {measurementSteps[activeStep].minValue} and {measurementSteps[activeStep].maxValue} {measurementSteps[activeStep].unit}
-                      </Typography>
-                    )}
+                        <RefreshCw size={16} />
+                      </IconButton>
+                    </Box>
                   </Box>
                 </CardContent>
               </Card>
@@ -384,16 +418,32 @@ const Measurements = () => {
                 gutterBottom
                 sx={{ 
                   fontSize: { xs: '1.25rem', sm: '1.5rem' },
-                  mb: { xs: 2, sm: 3 }
+                  mb: { xs: 2, sm: 3 },
+                  fontWeight: 600
                 }}
               >
-                How to Measure
+                Video Tutorial
               </Typography>
               
-              <VideoPlayer 
-                videoUrl={measurementSteps[activeStep].videoUrl} 
-                title={`How to measure your ${measurementSteps[activeStep].label.toLowerCase()}`} 
-              />
+              <Box sx={{ 
+                position: 'relative',
+                paddingTop: '56.25%', // 16:9 aspect ratio
+                width: '100%',
+                mb: 3
+              }}>
+                <Box sx={{ 
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%'
+                }}>
+                  <SimpleYouTubePlayer 
+                    videoId={currentStep.videoId}
+                    title={`How to measure your ${currentStep.label.toLowerCase()}`} 
+                  />
+                </Box>
+              </Box>
               
               <Box sx={{ mt: 'auto' }}>
                 <Box 
@@ -414,23 +464,23 @@ const Measurements = () => {
                       fontSize: { xs: '0.75rem', sm: '0.875rem' }
                     }}
                   >
-                    Previous
+                    Back
                   </Button>
                   
                   <Box sx={{ display: 'flex', gap: 1, width: { xs: '100%', sm: 'auto' } }}>
-                    {activeStep === measurementSteps.length - 1 ? (
+                    {isLastStep ? (
                       <Button
                         variant="contained"
                         color="primary"
                         startIcon={<Save size={16} />}
                         onClick={handleSave}
-                        disabled={loading || saved || Object.keys(measurements).length < measurementSteps.length}
+                        disabled={loading || saved || !canSave()}
                         sx={{ 
                           width: { xs: '100%', sm: 'auto' },
                           fontSize: { xs: '0.75rem', sm: '0.875rem' }
                         }}
                       >
-                        {loading ? 'Saving...' : saved ? 'Saved' : 'Save All Measurements'}
+                        {loading ? 'Saving...' : saved ? 'Saved' : 'Save Measurements'}
                       </Button>
                     ) : (
                       <Button
@@ -438,6 +488,7 @@ const Measurements = () => {
                         color="primary"
                         endIcon={<ArrowRight size={16} />}
                         onClick={handleNext}
+                        disabled={!isValidMeasurement()}
                         sx={{ 
                           width: { xs: '100%', sm: 'auto' },
                           fontSize: { xs: '0.75rem', sm: '0.875rem' }
@@ -450,13 +501,11 @@ const Measurements = () => {
                 </Box>
                 
                 {loading && (
-                  <LinearProgress sx={{ mt: 2 }} />
-                )}
-                
-                {saved && (
-                  <Alert severity="success" sx={{ mt: 2 }}>
-                    Your measurements have been saved successfully!
-                  </Alert>
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={saveProgress} 
+                    sx={{ mt: 2 }} 
+                  />
                 )}
               </Box>
             </CardContent>

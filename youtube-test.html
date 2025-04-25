@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube Embed Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .video-container {
+      position: relative;
+      width: 100%;
+      padding-top: 56.25%; /* 16:9 Aspect Ratio */
+      margin-bottom: 20px;
+    }
+    .video-container iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    h1 {
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <h1>YouTube Embed Test</h1>
+  <p>This page tests if YouTube embeds work in your environment.</p>
+  
+  <h2>Test 1: Direct Embed URL</h2>
+  <div class="video-container">
+    <iframe 
+      src="https://www.youtube.com/embed/dQw4w9WgXcQ" 
+      title="YouTube Test Video" 
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+      allowfullscreen>
+    </iframe>
+  </div>
+  
+  <h2>Test 2: Chest Measurement Video</h2>
+  <div class="video-container">
+    <iframe 
+      src="https://www.youtube.com/embed/zANQQLTvAHk" 
+      title="Chest Measurement Video" 
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+      allowfullscreen>
+    </iframe>
+  </div>
+  
+  <h2>Test 3: Waist Measurement Video</h2>
+  <div class="video-container">
+    <iframe 
+      src="https://www.youtube.com/embed/ZOuF0x4Mk3o" 
+      title="Waist Measurement Video" 
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+      allowfullscreen>
+    </iframe>
+  </div>
+  
+  <h2>Test 4: Shoulders Measurement Video</h2>
+  <div class="video-container">
+    <iframe 
+      src="https://www.youtube.com/embed/jfIg_sYChSE" 
+      title="Shoulders Measurement Video" 
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+      allowfullscreen>
+    </iframe>
+  </div>
+  
+  <script>
+    // Log when iframes load or fail
+    document.querySelectorAll('iframe').forEach(iframe => {
+      iframe.addEventListener('load', () => {
+        console.log('Iframe loaded:', iframe.title);
+      });
+      
+      iframe.addEventListener('error', () => {
+        console.error('Iframe failed to load:', iframe.title);
+      });
+    });
+  </script>
+</body>
+</html>
